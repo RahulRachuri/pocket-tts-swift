@@ -1,0 +1,12 @@
+.venv*/
+artifacts*/
+weights/
+oracle/
+*.wav
+*.npz
+*.trace
+__pycache__/
+*.pyc
+.DS_Store
+.build/
+tools/bench/results/
