@@ -169,8 +169,11 @@ public final class TTSPipeline {
     /// Text → 24 kHz float32 PCM through the four graphs, free-running.
     ///
     /// Lifetime note that shapes this function: `InferenceFunction.MutableViews` is
-    /// `~Escapable`, so the KV-state NDArrays must be local `var`s in the scope enclosing
-    /// every `await` — which is why prefill and the AR loop live in one long function.
+    /// `~Escapable` and borrows its arrays only up to `function.run`, so what each state
+    /// buffer needs is storage outliving every call it is inserted into — not one enclosing
+    /// scope. Here the KV cache is per-chunk and the Mimi state per-run, so both are locals
+    /// and prefill and the AR loop end up sharing a scope. A graph whose state lives as long
+    /// as its owner can hold it in stored properties instead and split the calls up.
     public func synthesize(
         text: String, voice: VoiceState, seed: UInt64, applyGain: Bool,
         log: (String) -> Void = { _ in }

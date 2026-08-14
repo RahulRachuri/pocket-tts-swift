@@ -29,8 +29,10 @@ public enum TTSError: Error, CustomStringConvertible {
 
 /// One loaded `.aimodel` bundle. Keeps the `AIModel` around and exposes `function(_:)`
 /// because the flow-LM asset is a **multifunction** package: `prefill` and `step` are two
-/// entry points over one weight set and one shared KV state, so they must come from the
-/// same `AIModel` instance or the state is not shared.
+/// entry points over one weight set. What loading it once buys is the weights — the two
+/// functions share their KV cache through host-owned `NDArray`s handed over as
+/// `MutableViews`, so it is the buffers that carry the state across calls, not the
+/// `AIModel` identity.
 public final class Asset {
     public let url: URL
     public let unit: ComputeUnit
