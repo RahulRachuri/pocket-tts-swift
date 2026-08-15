@@ -101,7 +101,7 @@ do {
         let sp = try SentencePieceModel(url: layout.tokenizerURL)
         let chunker = Chunker(sp: sp)
         let voice = try VoiceState(name: args.voice, embeddingsDir: layout.embeddingsDir)
-        let budget = Chunker.tokenBudget(voicePos: voice.positions)
+        let budget = try Chunker.tokenBudget(voicePos: voice.positions)
         print("voice \(voice.name): \(voice.positions) positions, token budget \(budget)")
         for (idx, c) in try chunker.chunk(args.text, voicePos: voice.positions).enumerated() {
             let n = sp.encode(c).count

@@ -37,6 +37,17 @@ public struct SafeTensors {
                   let offs = t["data_offsets"] as? [Int], offs.count == 2 else {
                 throw TTSError.message("\(url.lastPathComponent): malformed entry '\(name)'")
             }
+            // `data_offsets` is file-controlled, and a half-finished download is the case
+            // that actually happens. Both failure shapes are traps, not throws: `a..<b`
+            // traps when reversed, and `subdata` traps when the range outruns the buffer.
+            // Validating here means every consumer below reads a range already proven to
+            // lie inside the payload.
+            let payload = raw.count - hEnd
+            guard offs[0] >= 0, offs[0] <= offs[1], offs[1] <= payload else {
+                throw TTSError.message(
+                    "\(url.lastPathComponent): entry '\(name)' claims bytes "
+                    + "\(offs[0])..<\(offs[1]) of a \(payload)-byte payload")
+            }
             out[name] = Entry(dtype: dtype, shape: shape, byteRange: offs[0]..<offs[1])
         }
         self.entries = out

@@ -131,10 +131,22 @@ public struct Chunker {
     /// additionally capped by upstream's own MAX_TOKEN_PER_CHUNK. For the shipped voices
     /// (126–162 conditioning positions) the upstream 50 cap is the binding one; the
     /// derivation is here so a longer voice can never silently break the budget.
-    public static func tokenBudget(voicePos: Int, sMax: Int = Model.sMax) -> Int {
+    /// Throws rather than clamping when the voice leaves no room at all: flooring at one
+    /// token would hand the pipeline a budget the invariant does not support, and the
+    /// overflow `precondition` in the AR loop would then trap on chunker output that this
+    /// function promised was safe. Unreachable for the shipped voices, reachable for a
+    /// custom embedding dropped into the voices directory.
+    public static func tokenBudget(voicePos: Int, sMax: Int = Model.sMax) throws -> Int {
         var n = Model.maxTokensPerChunk
         while n > 0, voicePos + n + Model.maxGenLen(tokens: n) > sMax { n -= 1 }
-        return max(n, 1)
+        guard n > 0 else {
+            let onePos = 1 + Model.maxGenLen(tokens: 1)
+            throw TTSError.message(
+                "voice conditioning is too long: \(voicePos) positions leave no room for a "
+                + "single text token within S_MAX \(sMax), which needs \(onePos) more. "
+                + "The limit is \(sMax - onePos) positions; the shipped voices use 126-162.")
+        }
+        return n
     }
 
     /// The production chunker: upstream's split, then hard enforcement of the budget.
@@ -142,7 +154,7 @@ public struct Chunker {
     /// what the pipeline actually prefills, so the runtime overflow assert can never fire
     /// on chunker output.
     public func chunk(_ rawText: String, voicePos: Int) throws -> [String] {
-        let budget = Self.tokenBudget(voicePos: voicePos)
+        let budget = try Self.tokenBudget(voicePos: voicePos)
         var out: [String] = []
         for c in try upstreamSplit(rawText, maxTokens: budget) {
             if sp.encode(c).count <= budget {
