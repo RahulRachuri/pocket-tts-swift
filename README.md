@@ -31,11 +31,49 @@ Run from the repo root so the default `weights/` and `artifacts/` paths resolve
 `--pcm16`, `--warmup`. Debug subcommands `tokenize` / `detok` / `chunk` / `noise`
 print machine-diffable output for parity checks against the Python reference.
 
+## Use as a package
+
+`PocketTTSKit` is a library product, so an app can depend on it and let it resolve its
+own assets — no checkout, no `weights/` tree, no environment variables.
+
+```swift
+.package(url: "https://github.com/RahulRachuri/pocket-tts-swift", branch: "main")
+// target dependency: .product(name: "PocketTTSKit", package: "pocket-tts-swift")
+```
+
+There is no tagged release yet, so track `main`.
+
+```swift
+import PocketTTSKit
+
+let tts = try await TTSPipeline.fromHub()
+let out = try await tts.synthesize(text: "Hello there.", voice: try tts.voice("alba"),
+                                   seed: 0, applyGain: true)
+```
+
+`fromHub` resolves two repositories, both pinned to an immutable revision: the converted
+bundles published here, and Kyutai's checkpoint, which owns the weights, the sentencepiece
+model and the voice embeddings. Only what the run needs is fetched — at the default
+`float16` with one voice that is about 415 MB, against 9.8 GB for Kyutai's repository
+whole. Files land in `~/Library/Caches/pocket-tts-swift/hub/` (the app's own caches
+directory on iOS) and are reused, so a warm start pays a cache check rather than the
+download.
+
+Every LFS-stored payload is checked against the SHA-256 the Hub reports, and moved into
+place only once verified — a truncated or interrupted download cannot be mistaken for a
+complete one. The revision pin is still what SECURITY.md says it is: the digest proves you
+received the bytes the Hub holds, not that those bytes are the ones that were gated.
+
+Options: `voices: nil` for the whole English catalogue (about 165 MB more), `dtype:` to
+pick the fp32 bundles, `progress:` for a closure to drive a loading UI, and
+`cacheDirectory:` to put the cache somewhere else. The progress closure is `@Sendable` and
+is called from URLSession's queue, so hop to the main actor before touching UI.
+
 ## Layout
 
 - `NOTES.md` — working notes: decomposition map, export blockers, gate results.
 - `Package.swift`, `Sources/` — the Swift host: `PocketTTSKit` (tokenizer, chunker,
-  RNG, weights, pipeline) + the `pocket-tts-cli` executable.
+  RNG, weights, pipeline, Hub resolution) + the `pocket-tts-cli` executable.
 - `conversion/` — Python export + gate scripts (own venv, see NOTES).
 - `reference/` — notes on techniques studied from other ports.
 
