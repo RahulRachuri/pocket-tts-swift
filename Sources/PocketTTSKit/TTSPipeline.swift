@@ -80,6 +80,10 @@ public final class TTSPipeline {
     public let weights: HostWeights
     public let sp: SentencePieceModel
     public let chunker: Chunker
+    /// Where this pipeline's weights came from. Retained so a caller that did not build
+    /// the layout itself — `fromHub`, or an app that was handed a pipeline — can still
+    /// load a voice from it.
+    public let layout: WeightsLayout
 
     public init(assetsDir: URL, layout: WeightsLayout, dtype: String, unit: ComputeUnit) async throws {
         self.half = (dtype == "float16")
@@ -100,6 +104,7 @@ public final class TTSPipeline {
         weights = try HostWeights(modelURL: layout.modelURL)
         sp = try SentencePieceModel(url: layout.tokenizerURL)
         chunker = Chunker(sp: sp)
+        self.layout = layout
         loadSeconds = Double(nowNanos() - t0) / 1e9
     }
 
