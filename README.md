@@ -37,11 +37,10 @@ print machine-diffable output for parity checks against the Python reference.
 own assets — no checkout, no `weights/` tree, no environment variables.
 
 ```swift
-.package(url: "https://github.com/RahulRachuri/pocket-tts-swift", branch: "main")
+.package(url: "https://github.com/RahulRachuri/pocket-tts-swift", from: "0.1.0")
 // target dependency: .product(name: "PocketTTSKit", package: "pocket-tts-swift")
 ```
 
-There is no tagged release yet, so track `main`.
 
 ```swift
 import PocketTTSKit
